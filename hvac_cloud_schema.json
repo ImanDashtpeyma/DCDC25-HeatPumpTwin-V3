@@ -1,0 +1,368 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/hvac_cloud_schema.json",
+  "title": "HeatPumpTwin HVAC Cloud Document",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "site",
+    "devices"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "site": {
+      "type": "object",
+      "required": [
+        "site_id",
+        "name",
+        "location",
+        "timezone"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "location": {
+          "type": "object",
+          "required": [
+            "lat",
+            "lon"
+          ],
+          "properties": {
+            "lat": {
+              "type": "number",
+              "minimum": -90,
+              "maximum": 90
+            },
+            "lon": {
+              "type": "number",
+              "minimum": -180,
+              "maximum": 180
+            },
+            "address": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "timezone": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "devices": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/device"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "pose": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        },
+        "rx": {
+          "type": "number"
+        },
+        "ry": {
+          "type": "number"
+        },
+        "rz": {
+          "type": "number"
+        }
+      },
+      "additionalProperties": false
+    },
+    "mr": {
+      "type": "object",
+      "required": [
+        "anchor_id"
+      ],
+      "properties": {
+        "anchor_id": {
+          "type": "string"
+        },
+        "pose": {
+          "$ref": "#/$defs/pose"
+        }
+      },
+      "additionalProperties": false
+    },
+    "telemetry_common": {
+      "type": "object",
+      "required": [
+        "ts"
+      ],
+      "properties": {
+        "ts": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "power_kw": {
+          "type": "number"
+        },
+        "energy_kwh_24h": {
+          "type": "number"
+        },
+        "on": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "health": {
+      "type": "object",
+      "required": [
+        "status",
+        "score",
+        "alarms"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "warning",
+            "fault"
+          ]
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "alarms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "code",
+              "severity",
+              "ts"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high",
+                  "critical"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "ts": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "predictions": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "maintenance": {
+      "type": "object",
+      "properties": {
+        "last_service": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "next_service_due": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "checklist": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "control": {
+      "type": "object",
+      "properties": {
+        "desired": {
+          "type": "object",
+          "additionalProperties": {
+            "type": [
+              "number",
+              "integer",
+              "string",
+              "boolean"
+            ]
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "last_command": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "ts": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "user": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "value": {
+              "type": [
+                "number",
+                "integer",
+                "string",
+                "boolean"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "device_base": {
+      "type": "object",
+      "required": [
+        "device_id",
+        "type",
+        "telemetry"
+      ],
+      "properties": {
+        "device_id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "air_water_heatpump",
+            "ground_source_heatpump",
+            "electric_boiler",
+            "buffer_tank",
+            "rooftop_ac_unit"
+          ]
+        },
+        "model": {
+          "type": "string"
+        },
+        "vendor": {
+          "type": "string"
+        },
+        "serial": {
+          "type": "string"
+        },
+        "install": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "mr": {
+          "$ref": "#/$defs/mr"
+        },
+        "capabilities": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "telemetry": {
+          "$ref": "#/$defs/telemetry_common"
+        },
+        "health": {
+          "$ref": "#/$defs/health"
+        },
+        "maintenance": {
+          "$ref": "#/$defs/maintenance"
+        },
+        "control": {
+          "$ref": "#/$defs/control"
+        }
+      },
+      "additionalProperties": true
+    },
+    "device": {
+      "$ref": "#/$defs/device_base"
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "id",
+        "ts",
+        "device_id",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "ts": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "device_id": {
+          "type": "string"
+        },
+        "actor": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "setpoint_change",
+            "alarm_raised",
+            "alarm_cleared"
+          ]
+        },
+        "code": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "old": {},
+        "new": {}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,361 @@
+{
+  "schema_version": "1.0.0",
+  "site": {
+    "site_id": "SE-STHLM-BLDG-001",
+    "name": "Kista Tech Office",
+    "location": {
+      "lat": 59.403,
+      "lon": 17.944,
+      "address": "Isafjordsgatan 22, Kista, Stockholm"
+    },
+    "timezone": "Europe/Stockholm"
+  },
+  "devices": [
+    {
+      "device_id": "HP-AW-001",
+      "type": "air_water_heatpump",
+      "model": "EcoHeat AWX-12",
+      "vendor": "NordHeat",
+      "serial": "AWX12-2025-0001",
+      "install": {
+        "date": "2024-11-05",
+        "floor": 3,
+        "room": "M-317"
+      },
+      "mr": {
+        "anchor_id": "anchor-aw-001",
+        "pose": {
+          "x": 1.2,
+          "y": 0.0,
+          "z": -2.5,
+          "ry": 90
+        }
+      },
+      "capabilities": {
+        "setpoints": [
+          "supply_temp_c",
+          "pump_speed_pct"
+        ],
+        "modes": [
+          "eco",
+          "comfort"
+        ]
+      },
+      "telemetry": {
+        "ts": "2025-10-19T17:32:33Z",
+        "pressure_bar": 6.2,
+        "supply_temp_c": 46.8,
+        "return_temp_c": 40.5,
+        "ambient_c": -3.0,
+        "flow_l_min": 22.4,
+        "power_kw": 3.6,
+        "energy_kwh_24h": 54.2,
+        "compressor_cycles": 1294,
+        "on": true
+      },
+      "health": {
+        "status": "warning",
+        "score": 0.78,
+        "alarms": [
+          {
+            "code": "COMP_GAS_LOW",
+            "severity": "medium",
+            "message": "Compressor gas nearing end-of-life",
+            "ts": "2025-10-19T17:32:33Z"
+          }
+        ],
+        "predictions": {
+          "gas_due_hours": 18,
+          "failure_risk_pct": 14.5
+        }
+      },
+      "maintenance": {
+        "last_service": "2025-09-28T10:45:00Z",
+        "next_service_due": "2025-11-15T00:00:00Z",
+        "checklist": [
+          "inspect_compressor",
+          "verify_pressure",
+          "filter_clean"
+        ]
+      },
+      "control": {
+        "desired": {
+          "supply_temp_c": 48.0,
+          "pump_speed_pct": 65,
+          "mode": "eco"
+        },
+        "limits": {
+          "supply_temp_c": {
+            "min": 35,
+            "max": 60
+          },
+          "pump_speed_pct": {
+            "min": 20,
+            "max": 100
+          }
+        },
+        "last_command": {
+          "id": "ffa75fa6-8f37-46fd-99c5-7c1ec31f0963",
+          "ts": "2025-10-19T17:32:33Z",
+          "user": "analyst_ali",
+          "action": "set_supply_temp",
+          "value": 48.0
+        }
+      }
+    },
+    {
+      "device_id": "HP-GS-002",
+      "type": "ground_source_heatpump",
+      "model": "GeoCore GS-18",
+      "vendor": "NordHeat",
+      "serial": "GSG18-2023-0719",
+      "install": {
+        "date": "2023-07-19",
+        "floor": -1,
+        "room": "Plant-B2"
+      },
+      "mr": {
+        "anchor_id": "anchor-gs-002",
+        "pose": {
+          "x": -0.5,
+          "y": 0.0,
+          "z": -3.1,
+          "ry": 180
+        }
+      },
+      "capabilities": {
+        "setpoints": [
+          "supply_temp_c"
+        ],
+        "modes": [
+          "comfort"
+        ]
+      },
+      "telemetry": {
+        "ts": "2025-10-19T17:32:33Z",
+        "brine_in_c": 6.1,
+        "brine_out_c": 3.8,
+        "supply_temp_c": 50.0,
+        "return_temp_c": 44.4,
+        "flow_l_min": 28.0,
+        "power_kw": 4.2,
+        "energy_kwh_24h": 62.9,
+        "compressor_cycles": 5241,
+        "on": true
+      },
+      "health": {
+        "status": "ok",
+        "score": 0.93,
+        "alarms": [],
+        "predictions": {
+          "failure_risk_pct": 6.2
+        }
+      },
+      "maintenance": {
+        "last_service": "2025-06-02T08:30:00Z",
+        "next_service_due": "2026-06-02T00:00:00Z"
+      },
+      "control": {
+        "desired": {
+          "supply_temp_c": 49.0
+        },
+        "limits": {
+          "supply_temp_c": {
+            "min": 40,
+            "max": 55
+          }
+        }
+      }
+    },
+    {
+      "device_id": "ELB-003",
+      "type": "electric_boiler",
+      "model": "E-Boil 15k",
+      "vendor": "ArcticHeat",
+      "serial": "E15-2022-1010",
+      "install": {
+        "date": "2022-10-10",
+        "floor": 2,
+        "room": "Utility-210"
+      },
+      "mr": {
+        "anchor_id": "anchor-elb-003",
+        "pose": {
+          "x": 0.2,
+          "y": 0.0,
+          "z": -1.0,
+          "ry": 0
+        }
+      },
+      "telemetry": {
+        "ts": "2025-10-19T17:32:33Z",
+        "supply_temp_c": 45.0,
+        "return_temp_c": 41.2,
+        "power_kw": 11.0,
+        "energy_kwh_24h": 88.4,
+        "on": false
+      },
+      "health": {
+        "status": "ok",
+        "score": 0.9,
+        "alarms": []
+      },
+      "maintenance": {
+        "last_service": "2025-04-14T09:20:00Z",
+        "next_service_due": "2026-04-14T00:00:00Z"
+      },
+      "control": {
+        "desired": {
+          "supply_temp_c": 47.0,
+          "enable": false
+        }
+      }
+    },
+    {
+      "device_id": "BUF-004",
+      "type": "buffer_tank",
+      "model": "ThermoStore 300",
+      "vendor": "ThermX",
+      "serial": "TS300-2024-0205",
+      "install": {
+        "date": "2024-02-05",
+        "floor": 2,
+        "room": "Tank-Rm"
+      },
+      "mr": {
+        "anchor_id": "anchor-buf-004",
+        "pose": {
+          "x": -1.3,
+          "y": 0.0,
+          "z": -0.8,
+          "ry": 45
+        }
+      },
+      "telemetry": {
+        "ts": "2025-10-19T17:32:33Z",
+        "temp_top_c": 52.2,
+        "temp_mid_c": 49.0,
+        "temp_bottom_c": 44.3,
+        "level_pct": 82.0,
+        "losses_kw": 0.35
+      },
+      "health": {
+        "status": "ok",
+        "score": 0.96,
+        "alarms": []
+      },
+      "maintenance": {
+        "last_service": "2025-08-10T11:00:00Z",
+        "next_service_due": "2026-02-10T00:00:00Z"
+      },
+      "control": {
+        "desired": {
+          "target_temp_c": 50.0
+        },
+        "limits": {
+          "target_temp_c": {
+            "min": 35,
+            "max": 60
+          }
+        }
+      }
+    },
+    {
+      "device_id": "AC-ROOF-005",
+      "type": "rooftop_ac_unit",
+      "model": "RTU-20",
+      "vendor": "HVACo",
+      "serial": "RTU20-2025-0315",
+      "install": {
+        "date": "2025-03-15",
+        "roof": true,
+        "asset_link": "https://assetstore.unity.com/packages/3d/props/industrial/rooftop-ac-hvac-unit-315763"
+      },
+      "mr": {
+        "anchor_id": "anchor-roof-005",
+        "pose": {
+          "x": 5.4,
+          "y": 0.0,
+          "z": 2.1,
+          "ry": 270
+        }
+      },
+      "capabilities": {
+        "setpoints": [
+          "target_cooling_c",
+          "fan_speed_pct"
+        ],
+        "modes": [
+          "cool",
+          "vent"
+        ]
+      },
+      "telemetry": {
+        "ts": "2025-10-19T17:32:33Z",
+        "suction_pressure_bar": 3.1,
+        "discharge_pressure_bar": 15.4,
+        "evap_in_c": 24.0,
+        "evap_out_c": 17.0,
+        "cond_in_c": 35.0,
+        "cond_out_c": 41.5,
+        "fan_speed_pct": 70,
+        "power_kw": 5.8,
+        "on": true
+      },
+      "health": {
+        "status": "warning",
+        "score": 0.81,
+        "alarms": [
+          {
+            "code": "FILTER_DIRTY",
+            "severity": "low",
+            "message": "Filter delta-P elevated",
+            "ts": "2025-10-19T17:32:33Z"
+          }
+        ],
+        "predictions": {
+          "maintenance_due_days": 7
+        }
+      },
+      "maintenance": {
+        "last_service": "2025-07-01T12:00:00Z",
+        "next_service_due": "2025-10-25T00:00:00Z"
+      },
+      "control": {
+        "desired": {
+          "target_cooling_c": 22.0,
+          "fan_speed_pct": 65,
+          "mode": "cool"
+        }
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "ab8e565a-9949-42c5-a4c4-3189a18c08c8",
+      "ts": "2025-10-19T17:32:33Z",
+      "device_id": "HP-AW-001",
+      "actor": "tech_sara",
+      "type": "setpoint_change",
+      "key": "supply_temp_c",
+      "old": 47.0,
+      "new": 48.0
+    },
+    {
+      "id": "f81c3188-d4b7-44af-8f67-d58316e643bc",
+      "ts": "2025-10-19T17:32:33Z",
+      "device_id": "HP-AW-001",
+      "actor": "system",
+      "type": "alarm_raised",
+      "code": "COMP_GAS_LOW"
+    },
+    {
+      "id": "7efd35f6-c6b8-4598-ae1f-8b625d88b411",
+      "ts": "2025-10-19T17:32:33Z",
+      "device_id": "AC-ROOF-005",
+      "actor": "system",
+      "type": "alarm_raised",
+      "code": "FILTER_DIRTY"
+    }
+  ]
+}

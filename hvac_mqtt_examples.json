@@ -1,0 +1,89 @@
+{
+  "topics": {
+    "base": "heattwin/site/{site_id}/device/{device_id}",
+    "telemetry": "heattwin/site/{site_id}/device/{device_id}/telemetry",
+    "health": "heattwin/site/{site_id}/device/{device_id}/health",
+    "control_desired": "heattwin/site/{site_id}/device/{device_id}/control/desired",
+    "control_limits": "heattwin/site/{site_id}/device/{device_id}/control/limits",
+    "events": "heattwin/site/{site_id}/events"
+  },
+  "retained_recommendation": {
+    "telemetry": false,
+    "health": true,
+    "control_desired": true,
+    "control_limits": true
+  },
+  "qos_recommendation": {
+    "telemetry": 0,
+    "health": 1,
+    "control_desired": 1,
+    "events": 1
+  },
+  "samples": [
+    {
+      "topic": "heattwin/site/SE-STHLM-BLDG-001/device/HP-AW-001/telemetry",
+      "payload": {
+        "ts": "2025-10-19T17:48:53Z",
+        "pressure_bar": 6.2,
+        "supply_temp_c": 46.8,
+        "return_temp_c": 40.5,
+        "flow_l_min": 22.4,
+        "power_kw": 3.6,
+        "on": true
+      }
+    },
+    {
+      "topic": "heattwin/site/SE-STHLM-BLDG-001/device/HP-AW-001/health",
+      "payload": {
+        "status": "warning",
+        "score": 0.78,
+        "alarms": [
+          {
+            "code": "COMP_GAS_LOW",
+            "severity": "medium",
+            "message": "Compressor gas nearing end-of-life",
+            "ts": "2025-10-19T17:48:53Z"
+          }
+        ],
+        "predictions": {
+          "gas_due_hours": 18,
+          "failure_risk_pct": 14.5
+        }
+      }
+    },
+    {
+      "topic": "heattwin/site/SE-STHLM-BLDG-001/device/HP-AW-001/control/desired",
+      "payload": {
+        "supply_temp_c": 48.0,
+        "pump_speed_pct": 65,
+        "mode": "eco"
+      }
+    },
+    {
+      "topic": "heattwin/site/SE-STHLM-BLDG-001/events",
+      "payload": {
+        "id": "85454cfe-ffa2-4adc-afb0-13f626549f4f",
+        "ts": "2025-10-19T17:48:53Z",
+        "device_id": "HP-AW-001",
+        "actor": "tech_sara",
+        "type": "setpoint_change",
+        "key": "supply_temp_c",
+        "old": 47.0,
+        "new": 48.0
+      }
+    },
+    {
+      "topic": "heattwin/site/SE-STHLM-BLDG-001/device/AC-ROOF-005/telemetry",
+      "payload": {
+        "ts": "2025-10-19T17:48:53Z",
+        "suction_pressure_bar": 3.1,
+        "discharge_pressure_bar": 15.4,
+        "evap_out_c": 17.0,
+        "cond_out_c": 41.5,
+        "fan_speed_pct": 70,
+        "power_kw": 5.8,
+        "on": true
+      }
+    }
+  ]
+}
