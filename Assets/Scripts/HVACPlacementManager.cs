@@ -14,6 +14,7 @@ public class HVACPlacementManager : MonoBehaviourPunCallbacks
     private Vector3 _previewPos;
     private bool _validHit = false;
 
+private Vector3 _hitPos;
     void Update()
     {
         if (!PhotonNetwork.IsMasterClient) return;
