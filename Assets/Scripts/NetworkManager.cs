@@ -21,7 +21,7 @@ public class NetworkManager : MonoBehaviourPunCallbacks
     {
         Debug.Log("🚪 We entered the room: Passthrough Room");
         //PhotonNetwork.Instantiate(playerPrefab.name, Vector3.zero, Quaternion.identity);
-        PhotonNetwork.Instantiate("NetworkAvatar", Vector3.zero, Quaternion.identity);
+        //PhotonNetwork.Instantiate("NetworkAvatar", Vector3.zero, Quaternion.identity);
     }
 
     public override void OnDisconnected(Photon.Realtime.DisconnectCause cause)
