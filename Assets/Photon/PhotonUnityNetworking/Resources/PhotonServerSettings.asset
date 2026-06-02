@@ -45,6 +45,7 @@ MonoBehaviour:
   - RPC_SelectPin
   - RPC_LoadAnchor
   - RPC_PlaceHVAC
+  - RPC_SyncPosition
   DisableAutoOpenWizard: 1
   ShowSettings: 1
   DevRegionSetOnce: 0

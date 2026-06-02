@@ -1,5 +1,6 @@
 ﻿using Photon.Pun;
 using UnityEngine;
+using System.Collections;
 
 public class TwinNetworkHub : MonoBehaviourPun
 {
@@ -21,19 +22,25 @@ public class TwinNetworkHub : MonoBehaviourPun
 
     private GameObject _spawnedHVAC;
 
-    public void SelectPin_Request(int pinId)
+    public void SelectPin_Request(int pinId, Vector3 pinWorldPosition)
     {
         if (!PhotonNetwork.IsMasterClient) return;
-        photonView.RPC(nameof(RPC_SelectPin), RpcTarget.All, pinId);
+        photonView.RPC(nameof(RPC_SelectPin), RpcTarget.All,
+            pinId,
+            pinWorldPosition.x,
+            pinWorldPosition.y,
+            pinWorldPosition.z);
     }
 
     [PunRPC]
-    void RPC_SelectPin(int pinId)
+    void RPC_SelectPin(int pinId, float px, float py, float pz)
     {
-        if (PhotonNetwork.IsMasterClient)
-            MQTTManager.Instance?.PublishPending();
-
         selectedPinId = pinId;
+        var pinPos = new Vector3(px, py, pz);
+
+        // اول SceneRoot رو sync کن، بعد HVAC spawn کن
+        if (ColocationManager.Instance != null)
+            ColocationManager.Instance.CreateAndShareAnchor(pinPos);
 
         if (PhotonNetwork.IsMasterClient)
         {
@@ -43,19 +50,31 @@ public class TwinNetworkHub : MonoBehaviourPun
                 _spawnedHVAC = null;
             }
 
-            var cam = Camera.main;
-            Vector3 spawnPos = cam.transform.position +
-                               cam.transform.forward * 1.5f;
-            spawnPos.y = 0f;
-
-            _spawnedHVAC = PhotonNetwork.Instantiate(
-                "hvac 1", spawnPos, Quaternion.identity);
-
-            if (ColocationManager.Instance != null)
-                ColocationManager.Instance.CreateAndShareAnchor(spawnPos);
-
-            heatPumpRoot = _spawnedHVAC;
+            StartCoroutine(SpawnAfterColocation());
         }
+    }
+
+    IEnumerator SpawnAfterColocation()
+    {
+        // صبر کن تا SceneRoot جابجا بشه
+        float timeout = 3f;
+        while (ColocationManager.Instance != null &&
+               !ColocationManager.Instance.isColocated &&
+               timeout > 0)
+        {
+            timeout -= Time.deltaTime;
+            yield return null;
+        }
+
+        // HVAC رو در position صفر نسبت به SceneRoot spawn کن
+        var sceneRoot = ColocationManager.Instance?.sceneRoot;
+        Vector3 spawnPos = sceneRoot != null ? sceneRoot.position : Vector3.zero;
+
+        _spawnedHVAC = PhotonNetwork.Instantiate("hvac 1", spawnPos, Quaternion.identity);
+        heatPumpRoot = _spawnedHVAC;
+
+        MQTTManager.Instance?.PublishPending();
+        Debug.Log("✅ HVAC spawned at: " + spawnPos);
     }
 
     public void ToggleHVAC()
@@ -112,7 +131,9 @@ public class TwinNetworkHub : MonoBehaviourPun
                 Vector3.one * (1 + appliedPower / 5000f);
 
         Debug.Log($"APPROVED: power={appliedPower}");
-        MQTTManager.Instance?.PublishApproved();
+        // فقط MasterClient publish کنه
+        if (PhotonNetwork.IsMasterClient)
+            MQTTManager.Instance?.PublishApproved();
     }
 
     [PunRPC]
@@ -120,6 +141,8 @@ public class TwinNetworkHub : MonoBehaviourPun
     {
         pending = false;
         Debug.Log("REJECTED");
-        MQTTManager.Instance?.PublishRejected();
+        // فقط MasterClient publish کنه
+        if (PhotonNetwork.IsMasterClient)
+            MQTTManager.Instance?.PublishRejected();
     }
 }
