@@ -4,6 +4,7 @@ using System.Collections;
 
 public class TwinNetworkHub : MonoBehaviourPun
 {
+    private HVACIndicator _indicator;
     [Header("Scene References")]
     public GameObject heatPumpRoot;
     public Transform[] pinSpawnPoints;
@@ -38,7 +39,6 @@ public class TwinNetworkHub : MonoBehaviourPun
         selectedPinId = pinId;
         var pinPos = new Vector3(px, py, pz);
 
-        // اول SceneRoot رو sync کن، بعد HVAC spawn کن
         if (ColocationManager.Instance != null)
             ColocationManager.Instance.CreateAndShareAnchor(pinPos);
 
@@ -49,9 +49,27 @@ public class TwinNetworkHub : MonoBehaviourPun
                 PhotonNetwork.Destroy(_spawnedHVAC);
                 _spawnedHVAC = null;
             }
-
             StartCoroutine(SpawnAfterColocation());
         }
+        else
+        {
+            // Technician هم indicator رو پیدا کنه
+            StartCoroutine(FindIndicatorAfterSpawn());
+        }
+    }
+    IEnumerator FindIndicatorAfterSpawn()
+    {
+        // صبر کن تا HVAC توسط MasterClient spawn بشه
+        float timeout = 5f;
+        while (_indicator == null && timeout > 0)
+        {
+            timeout -= Time.deltaTime;
+            var hvac = GameObject.Find("hvac 1(Clone)");
+            if (hvac != null)
+                _indicator = hvac.GetComponentInChildren<HVACIndicator>();
+            yield return null;
+        }
+        _indicator?.SetPending();
     }
 
     IEnumerator SpawnAfterColocation()
@@ -72,6 +90,8 @@ public class TwinNetworkHub : MonoBehaviourPun
 
         _spawnedHVAC = PhotonNetwork.Instantiate("hvac 1", spawnPos, Quaternion.identity);
         heatPumpRoot = _spawnedHVAC;
+        _indicator = _spawnedHVAC.GetComponentInChildren<HVACIndicator>();
+        _indicator?.SetPending();
 
         MQTTManager.Instance?.PublishPending();
         Debug.Log("✅ HVAC spawned at: " + spawnPos);
@@ -90,7 +110,7 @@ public class TwinNetworkHub : MonoBehaviourPun
 
     public void Technician_RequestChange(float power, float pressure, int phase)
     {
-        if (PhotonNetwork.IsMasterClient) return;
+       // if (PhotonNetwork.IsMasterClient) return;
         photonView.RPC(nameof(RPC_RequestChange), RpcTarget.All, power, pressure, phase);
     }
 
@@ -125,6 +145,7 @@ public class TwinNetworkHub : MonoBehaviourPun
         appliedPressure = pendingPressure;
         appliedPhase = pendingPhase;
         pending = false;
+        _indicator?.SetApproved();
 
         if (heatPumpRoot != null)
             heatPumpRoot.transform.localScale =
@@ -140,6 +161,7 @@ public class TwinNetworkHub : MonoBehaviourPun
     void RPC_Reject()
     {
         pending = false;
+        _indicator?.SetRejected();
         Debug.Log("REJECTED");
         // فقط MasterClient publish کنه
         if (PhotonNetwork.IsMasterClient)

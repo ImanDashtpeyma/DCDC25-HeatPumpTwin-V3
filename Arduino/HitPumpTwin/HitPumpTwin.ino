@@ -4,25 +4,31 @@
 const char* WIFI_SSID = "khoone";
 const char* WIFI_PASS = "imansamira2019";
 
-const char* BROKER = "192.168.0.20";
+const char* BROKER = "test.mosquitto.org";
 const int PORT = 1883;
 const char* TOPIC = "hvac/heatpumptwin/iman2026";
 
-const int PIN_RED = 12;
-const int PIN_GREEN = 13;
+const int PIN_RED   = 12;
+const int PIN_GREEN = 11;
+const int PIN_BLUE  = 10;
 
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
 
-void setup()
-{
-    Serial.begin(9600);
-    pinMode(PIN_RED, OUTPUT);
-    pinMode(PIN_GREEN, OUTPUT);
+void setColor(bool r, bool g, bool b) {
+    digitalWrite(PIN_RED,   r ? HIGH : LOW);
+    digitalWrite(PIN_GREEN, g ? HIGH : LOW);
+    digitalWrite(PIN_BLUE,  b ? HIGH : LOW);
+}
 
-    // حالت پیش‌فرض — سبز (دستگاه داره کار می‌کنه)
-    digitalWrite(PIN_RED, LOW);
-    digitalWrite(PIN_GREEN, HIGH);
+void setup() {
+    Serial.begin(9600);
+    pinMode(PIN_RED,   OUTPUT);
+    pinMode(PIN_GREEN, OUTPUT);
+    pinMode(PIN_BLUE,  OUTPUT);
+
+    // پیش‌فرض — سبز
+    setColor(false, true, false);
 
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
@@ -35,29 +41,18 @@ void setup()
     Serial.println("📡 Subscribed: " + String(TOPIC));
 }
 
-void loop()
-{
+void loop() {
     mqttClient.poll();
-    if (mqttClient.available())
-    {
+    if (mqttClient.available()) {
         String msg = "";
         while (mqttClient.available()) msg += (char)mqttClient.read();
         Serial.println("📥 " + msg);
 
         if (msg == "pending")
-        {
-            digitalWrite(PIN_RED, HIGH);
-            digitalWrite(PIN_GREEN, LOW);
-        }
+            setColor(true, false, false);    // قرمز
         else if (msg == "approved")
-        {
-            digitalWrite(PIN_RED, LOW);
-            digitalWrite(PIN_GREEN, HIGH);
-        }
+            setColor(false, true, false);    // سبز
         else if (msg == "rejected")
-        {
-            digitalWrite(PIN_RED, LOW);
-            digitalWrite(PIN_GREEN, HIGH);  // برمی‌گرده به سبز
-        }
+            setColor(false, false, true);    // آبی
     }
 }
