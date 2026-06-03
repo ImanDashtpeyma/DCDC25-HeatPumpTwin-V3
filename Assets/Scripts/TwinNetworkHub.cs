@@ -110,7 +110,8 @@ public class TwinNetworkHub : MonoBehaviourPun
 
     public void Technician_RequestChange(float power, float pressure, int phase)
     {
-       // if (PhotonNetwork.IsMasterClient) return;
+        //For Disabling  rols
+        if (PhotonNetwork.IsMasterClient) return;
         photonView.RPC(nameof(RPC_RequestChange), RpcTarget.All, power, pressure, phase);
     }
 
