@@ -1,8 +1,8 @@
 #include <WiFiS3.h>
 #include <ArduinoMqttClient.h>
 
-const char* WIFI_SSID = "khoone";
-const char* WIFI_PASS = "imansamira2019";
+const char* WIFI_SSID = "IMANIOT";
+const char* WIFI_PASS = "12345678";
 
 const char* BROKER = "test.mosquitto.org";
 const int PORT = 1883;
