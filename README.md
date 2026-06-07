@@ -170,6 +170,15 @@ The Engineer can point to the physical model while adjusting the digital twin. T
 | `rejected` | 🔵 Blue | Off | Three descending tones |
 | Startup | 🟢 Green | Off | Three ascending notes |
 
+### Physical Model
+
+<p align="center">
+  <img src="./Poster-Video/Model-Front.jpg" width="45%">
+  &nbsp;
+  <img src="./Poster-Video/Model Back.jpg" width="45%">
+</p>
+<p align="center"><em>Physical cardboard HVAC model — front and back — with embedded Arduino, fans, LED, and buzzer</em></p>
+
 ### Why a Relay Instead of Direct Pin Control?
 
 The DC fans draw 200mA each. Arduino digital output pins are limited to 40mA. Driving the fans directly would damage the board. The relay module acts as a switch: the Arduino controls the relay with a safe signal current, and the relay switches the fan circuit independently.
