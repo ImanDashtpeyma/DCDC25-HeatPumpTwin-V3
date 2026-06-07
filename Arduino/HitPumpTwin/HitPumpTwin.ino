@@ -11,8 +11,7 @@ const char* TOPIC = "hvac/heatpumptwin/iman2026";
 const int PIN_RED   = 12;
 const int PIN_GREEN = 11;
 const int PIN_BLUE  = 10;
-const int PIN_FAN1  = 7;
-const int PIN_FAN2  = 8;
+const int PIN_RELAY = 7;
 const int PIN_BUZ   = 9;
 
 WiFiClient wifiClient;
@@ -24,20 +23,17 @@ void setColor(bool r, bool g, bool b) {
     digitalWrite(PIN_BLUE,  b ? HIGH : LOW);
 }
 
-// سبز — دو بیپ کوتاه بالا
 void buzzApproved() {
     tone(PIN_BUZ, 1000, 100); delay(200);
     tone(PIN_BUZ, 1000, 100); delay(200);
     noTone(PIN_BUZ);
 }
 
-// قرمز — یه بیپ طولانی پایین
 void buzzPending() {
     tone(PIN_BUZ, 400, 600); delay(700);
     noTone(PIN_BUZ);
 }
 
-// آبی — سه بیپ نزولی
 void buzzRejected() {
     tone(PIN_BUZ, 800, 120); delay(200);
     tone(PIN_BUZ, 500, 120); delay(200);
@@ -50,13 +46,11 @@ void setup() {
     pinMode(PIN_RED,   OUTPUT);
     pinMode(PIN_GREEN, OUTPUT);
     pinMode(PIN_BLUE,  OUTPUT);
-    pinMode(PIN_FAN1,  OUTPUT);
-    pinMode(PIN_FAN2,  OUTPUT);
+    pinMode(PIN_RELAY, OUTPUT);
     pinMode(PIN_BUZ,   OUTPUT);
 
-    // فن‌ها از لحظه روشن شدن
-    digitalWrite(PIN_FAN1, HIGH);
-    digitalWrite(PIN_FAN2, HIGH);
+    // فن خاموش تا approved بیاد
+    digitalWrite(PIN_RELAY, HIGH);
 
     // پیش‌فرض — سبز
     setColor(false, true, false);
@@ -70,11 +64,12 @@ void setup() {
 
     mqttClient.subscribe(TOPIC);
     Serial.println("📡 Subscribed: " + String(TOPIC));
+
     // صدای استارتاپ
-tone(PIN_BUZ, 600, 150); delay(200);
-tone(PIN_BUZ, 900, 150); delay(200);
-tone(PIN_BUZ, 1200, 300); delay(400);
-noTone(PIN_BUZ);
+    tone(PIN_BUZ, 600, 150); delay(200);
+    tone(PIN_BUZ, 900, 150); delay(200);
+    tone(PIN_BUZ, 1200, 300); delay(400);
+    noTone(PIN_BUZ);
 }
 
 void loop() {
@@ -86,12 +81,15 @@ void loop() {
 
         if (msg == "pending") {
             setColor(true, false, false);
+            digitalWrite(PIN_RELAY,LOW);  // فن خاموش
             buzzPending();
         } else if (msg == "approved") {
             setColor(false, true, false);
+            digitalWrite(PIN_RELAY, HIGH);   // فن روشن
             buzzApproved();
         } else if (msg == "rejected") {
             setColor(false, false, true);
+            digitalWrite(PIN_RELAY, LOW);  // فن خاموش
             buzzRejected();
         }
     }
