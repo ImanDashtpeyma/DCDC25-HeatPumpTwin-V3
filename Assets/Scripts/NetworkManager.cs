@@ -23,9 +23,11 @@ public class NetworkManager : MonoBehaviourPunCallbacks
 
         if (PhotonNetwork.IsMasterClient)
         {
-            PhotonNetwork.Instantiate("Map",
-                new Vector3(0, 1.5f, 2f),
-                Quaternion.Euler(90, 180, 0));
+            var cam = Camera.main.transform;
+            var forward = Vector3.Scale(cam.forward, new Vector3(1, 0, 1)).normalized;
+            var mapPos = cam.position + forward * 1.5f;
+            mapPos.y = 1.5f;
+            PhotonNetwork.Instantiate("Map", mapPos, Quaternion.Euler(90, 180, 0));
         }
     }
 
