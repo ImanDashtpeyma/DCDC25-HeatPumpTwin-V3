@@ -1,4 +1,5 @@
-﻿using Photon.Pun;
+﻿using System.Globalization;
+using Photon.Pun;
 using UnityEngine;
 using ExitGames.Client.Photon;
 
@@ -23,8 +24,12 @@ public class ColocationManager : MonoBehaviourPunCallbacks
     {
         if (!PhotonNetwork.IsMasterClient) return;
         Vector3 head = Camera.main.transform.position;
+        string encoded = string.Join(",",
+            head.x.ToString(CultureInfo.InvariantCulture),
+            head.y.ToString(CultureInfo.InvariantCulture),
+            head.z.ToString(CultureInfo.InvariantCulture));
         PhotonNetwork.CurrentRoom.SetCustomProperties(
-            new Hashtable { { "colocHead", $"{head.x},{head.y},{head.z}" } });
+            new Hashtable { { "colocHead", encoded } });
         isColocated = true;
         Debug.Log("📡 Calibration origin set: " + head);
     }
@@ -41,7 +46,9 @@ public class ColocationManager : MonoBehaviourPunCallbacks
 
         var parts = raw.ToString().Split(',');
         var engineerHead = new Vector3(
-            float.Parse(parts[0]), float.Parse(parts[1]), float.Parse(parts[2]));
+            float.Parse(parts[0], CultureInfo.InvariantCulture),
+            float.Parse(parts[1], CultureInfo.InvariantCulture),
+            float.Parse(parts[2], CultureInfo.InvariantCulture));
         var myHead = Camera.main.transform.position;
         var offset = engineerHead - myHead;
 
