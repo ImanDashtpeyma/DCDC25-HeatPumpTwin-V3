@@ -1,12 +1,17 @@
-using Photon.Pun;
+using Fusion;
 using UnityEngine;
 
-public class PlayerPassthrough : MonoBehaviour
+// Migrated from Photon PUN 2 (PhotonView.IsMine) to Photon Fusion
+// (NetworkObject.HasInputAuthority). Not currently attached to anything in
+// the scene — there is no player avatar prefab yet (planned follow-up work);
+// this will move onto that prefab once it exists.
+public class PlayerPassthrough : NetworkBehaviour
 {
     public GameObject passthroughLayer;
 
-    void Start()
+    public override void Spawned()
     {
-        passthroughLayer.SetActive(GetComponent<PhotonView>().IsMine);
+        if (passthroughLayer)
+            passthroughLayer.SetActive(HasInputAuthority);
     }
 }
