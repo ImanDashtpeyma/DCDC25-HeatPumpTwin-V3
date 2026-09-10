@@ -3728,7 +3728,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ColocationReadyCallbacks:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 135208724}
+        m_TargetAssemblyTypeName: AppController, Assembly-CSharp
+        m_MethodName: OnColocationReady
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   DebuggingOptions:
     visualizeAlignmentAnchor: 1
     enableVerboseLogging: 0
@@ -21393,7 +21405,7 @@ MonoBehaviour:
     - {fileID: 5618556046422172173, guid: 31818101cde292945ab80af5d14bec54, type: 3}
     - {fileID: 5618556046422172173, guid: c2bd5595e9fe2493a92d4bc0bb264603, type: 3}
     SceneJsons: []
-    LoadSceneOnStartup: 1
+    LoadSceneOnStartup: 0
     EnableHighFidelityScene: 0
     SeatWidth: 0.6
     SceneJson: 
