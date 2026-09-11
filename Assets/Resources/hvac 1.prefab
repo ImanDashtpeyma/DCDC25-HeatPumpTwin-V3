@@ -812,6 +812,7 @@ GameObject:
   - component: {fileID: 3043529012773435734}
   - component: {fileID: 913123904287343169}
   - component: {fileID: 4924438014418232196}
+  - component: {fileID: 6475767677666496374}
   m_Layer: 0
   m_Name: hvac 1
   m_TagString: Untagged
@@ -943,6 +944,7 @@ MonoBehaviour:
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 4924438014418232196}
+  - {fileID: 6475767677666496374}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &4924438014418232196
 MonoBehaviour:
@@ -984,6 +986,19 @@ MonoBehaviour:
     MinImpactfulCollisionAlignment: 0.3
     ImpactStartCorrectionTime: 0.1
     ImpactCorrectionTimeComplete: 0.3
+--- !u!114 &6475767677666496374
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1416685508434460819}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01b2147757cee0e4f8ada04c95142075, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pointableElement: {fileID: 0}
 --- !u!1 &2665187927740689969
 GameObject:
   m_ObjectHideFlags: 0

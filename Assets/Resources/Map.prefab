@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 3350780037936303786}
   - component: {fileID: 6942156176208633362}
   - component: {fileID: 1195668768436465500}
+  - component: {fileID: 957969066876990176}
   m_Layer: 0
   m_Name: Map
   m_TagString: Untagged
@@ -207,6 +208,7 @@ MonoBehaviour:
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 1195668768436465500}
+  - {fileID: 957969066876990176}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &1195668768436465500
 MonoBehaviour:
@@ -248,6 +250,19 @@ MonoBehaviour:
     MinImpactfulCollisionAlignment: 0.3
     ImpactStartCorrectionTime: 0.1
     ImpactCorrectionTimeComplete: 0.3
+--- !u!114 &957969066876990176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 583836913034794025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01b2147757cee0e4f8ada04c95142075, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pointableElement: {fileID: 3350780037936303786}
 --- !u!1 &1115771756483519788
 GameObject:
   m_ObjectHideFlags: 0
