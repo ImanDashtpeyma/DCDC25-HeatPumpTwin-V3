@@ -1,7 +1,8 @@
-﻿using Photon.Pun;
 using UnityEngine;
 
-public class RoleUIManager : MonoBehaviourPunCallbacks
+// Migrated from Photon PUN 2 (MonoBehaviourPunCallbacks.OnJoinedRoom) to
+// Photon Fusion — reacts to AppController.OnRoleResolved instead.
+public class RoleUIManager : MonoBehaviour
 {
     [Header("Panels")]
     public GameObject technicianPanel;
@@ -11,11 +12,16 @@ public class RoleUIManager : MonoBehaviourPunCallbacks
     {
         if (technicianPanel) technicianPanel.SetActive(false);
         if (engineerPanel)   engineerPanel.SetActive(false);
+        AppController.OnRoleResolved += HandleRoleResolved;
     }
 
-    public override void OnJoinedRoom()
+    void OnDestroy()
     {
-        bool isEngineer = PhotonNetwork.IsMasterClient;
+        AppController.OnRoleResolved -= HandleRoleResolved;
+    }
+
+    void HandleRoleResolved(bool isEngineer)
+    {
         if (technicianPanel) technicianPanel.SetActive(!isEngineer);
         if (engineerPanel)   engineerPanel.SetActive(isEngineer);
     }

@@ -15,8 +15,9 @@ GameObject:
   - component: {fileID: 2841655155612934451}
   - component: {fileID: 5533619738535946664}
   - component: {fileID: 3350780037936303786}
-  - component: {fileID: -6349602367717083364}
-  - component: {fileID: 7075590672612186304}
+  - component: {fileID: 6942156176208633362}
+  - component: {fileID: 1195668768436465500}
+  - component: {fileID: 957969066876990176}
   m_Layer: 0
   m_Name: Map
   m_TagString: Untagged
@@ -187,7 +188,8 @@ MonoBehaviour:
   _rigidbody: {fileID: 5533619738535946664}
   _kinematicWhileSelected: 1
   _throwWhenUnselected: 1
---- !u!114 &-6349602367717083364
+  _forceKinematicDisabled: 0
+--- !u!114 &6942156176208633362
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -196,21 +198,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 583836913034794025}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: aa584fbee541324448dd18d8409c7a41, type: 3}
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ObservedComponentsFoldoutOpen: 1
-  Group: 0
-  prefixField: -1
-  Synchronization: 3
-  OwnershipTransfer: 0
-  observableSearch: 2
-  ObservedComponents:
-  - {fileID: 7075590672612186304}
-  sceneViewId: 0
-  InstantiationId: 0
-  isRuntimeInstantiated: 0
---- !u!114 &7075590672612186304
+  SortKey: 1289984101
+  SendPriority: 1
+  EnableInterpolation: 1
+  Flags: 262402
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 1195668768436465500}
+  - {fileID: 957969066876990176}
+  ForceRemoteRenderTimeframe: 0
+--- !u!114 &1195668768436465500
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -219,13 +219,50 @@ MonoBehaviour:
   m_GameObject: {fileID: 583836913034794025}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 627855c7f81362d41938ffe0b1475957, type: 3}
+  m_Script: {fileID: 158639473, guid: e725a070cec140c4caffb81624c8c787, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_SynchronizePosition: 1
-  m_SynchronizeRotation: 1
-  m_SynchronizeScale: 0
-  m_UseLocal: 1
+  _stateAuthorityChangeErrorCorrectionDelta: 0
+  SyncScale: 0
+  SyncParent: 0
+  _autoAOIOverride: 1
+  ConfigFlags: 0
+  PhysicsSettings:
+    ForecastEnabled: 1
+    DebugPhysics: 0
+    GravityForecast: 2
+    MaxExtrapolationTime: 0.15
+    MinLinearDetectedError: 0.02
+    MinAngularDetectedError: 3
+    MaxLinearError: 0
+    MaxAngularError: 0
+    LowCorrectionProgressThreshold: 0.015
+    HighErrorSimilarityThreshold: 1
+    MaxErrorTotalTime: 0.5
+    MaxRemoteSleepIgnoreTime: 0.5
+    ErrorCorrectionType: 0
+    LinearVelCorrectionMul: 1
+    AngularVelCorrectionMul: 1
+    PositionCorrectionLerp: 0.15
+    RotationCorrectionLerp: 0.15
+    Spring: 75
+    Damper: 2
+    MinImpactfulCollisionAlignment: 0.3
+    ImpactStartCorrectionTime: 0.1
+    ImpactCorrectionTimeComplete: 0.3
+--- !u!114 &957969066876990176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 583836913034794025}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01b2147757cee0e4f8ada04c95142075, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  pointableElement: {fileID: 3350780037936303786}
 --- !u!1 &1115771756483519788
 GameObject:
   m_ObjectHideFlags: 0

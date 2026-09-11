@@ -1,8 +1,16 @@
-﻿using Photon.Pun;
+using Fusion;
 using UnityEngine;
-using ExitGames.Client.Photon;
 
-public class ColocationManager : MonoBehaviourPunCallbacks
+// Migrated from Photon PUN 2 to Photon Fusion (Shared Mode).
+// Still the manual, one-point, translation-only calibration hack (no rotation
+// correction) — real native colocation (OVRColocationSession / Shared Spatial
+// Anchors) is a separate follow-up phase, not done here. This migration only
+// ports the existing behavior onto Fusion so the project compiles again;
+// it does not fix the rotation limitation described earlier in this project.
+//
+// Needs a NetworkObject component on the same GameObject (add via the Unity
+// Editor — this cannot be added by hand-editing the scene file safely).
+public class ColocationManager : NetworkBehaviour
 {
     public static ColocationManager Instance;
 
@@ -14,36 +22,42 @@ public class ColocationManager : MonoBehaviourPunCallbacks
     // OVRCameraRig را در Inspector اینجا Assign کنید
     public Transform xrRig;
 
+    private Vector3 _lastEngineerHead;
+    private bool _hasEngineerHead;
+
     void Awake() => Instance = this;
 
     // ───── Calibration ─────
 
-    // مهندس (MasterClient) این را می‌زند — هر دو روی نقطه مرجع ایستاده‌اند
+    // مهندس (Engineer) این را می‌زند — هر دو روی نقطه مرجع ایستاده‌اند
     public void BroadcastOrigin()
     {
-        if (!PhotonNetwork.IsMasterClient) return;
+        if (!AppController.IsEngineer) return;
         Vector3 head = Camera.main.transform.position;
-        PhotonNetwork.CurrentRoom.SetCustomProperties(
-            new Hashtable { { "colocHead", $"{head.x},{head.y},{head.z}" } });
+        RPC_BroadcastOrigin(head);
         isColocated = true;
         Debug.Log("📡 Calibration origin set: " + head);
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.All)]
+    void RPC_BroadcastOrigin(Vector3 engineerHead)
+    {
+        _lastEngineerHead = engineerHead;
+        _hasEngineerHead = true;
     }
 
     // تکنسین این را می‌زند — باید روی همان نقطه مرجع ایستاده باشد
     public void AlignToOrigin()
     {
-        if (PhotonNetwork.IsMasterClient) return;
-        if (!PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("colocHead", out var raw))
+        if (AppController.IsEngineer) return;
+        if (!_hasEngineerHead)
         {
             Debug.LogWarning("⚠️ مهندس هنوز کالیبره نکرده.");
             return;
         }
 
-        var parts = raw.ToString().Split(',');
-        var engineerHead = new Vector3(
-            float.Parse(parts[0]), float.Parse(parts[1]), float.Parse(parts[2]));
         var myHead = Camera.main.transform.position;
-        var offset = engineerHead - myHead;
+        var offset = _lastEngineerHead - myHead;
 
         if (xrRig != null)
             xrRig.position += offset;
@@ -56,20 +70,19 @@ public class ColocationManager : MonoBehaviourPunCallbacks
 
     public void CreateAndShareAnchor(Vector3 worldPosition)
     {
-        if (!PhotonNetwork.IsMasterClient) return;
-        photonView.RPC(nameof(RPC_SyncPosition), RpcTarget.All,
-            worldPosition.x, worldPosition.y, worldPosition.z);
+        if (!AppController.IsEngineer) return;
+        RPC_SyncPosition(worldPosition);
         Debug.Log("📡 Position synced: " + worldPosition);
     }
 
-    [PunRPC]
-    void RPC_SyncPosition(float x, float y, float z)
+    [Rpc(RpcSources.All, RpcTargets.All)]
+    void RPC_SyncPosition(Vector3 pos)
     {
         if (sceneRoot != null)
         {
-            sceneRoot.position = new Vector3(x, y, z);
+            sceneRoot.position = pos;
             isColocated = true;
-            Debug.Log("🎯 Scene repositioned to: " + new Vector3(x, y, z));
+            Debug.Log("🎯 Scene repositioned to: " + pos);
         }
     }
 }
