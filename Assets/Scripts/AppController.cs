@@ -96,16 +96,39 @@ public class AppController : MonoBehaviour, INetworkRunnerCallbacks
 
         Debug.Log($"🚪 Joined room! (via {source}) Engineer={isEngineer}");
         OnRoleResolved?.Invoke(isEngineer);
+        TrySpawnMap();
     }
+
+    private bool _colocationReady;
+    private bool _mapSpawned;
 
     // Wired up in the Inspector to [BuildingBlock] Colocation's ColocationController
     // -> "Colocation Ready Callbacks" UnityEvent. Fires locally on each device once
     // that device's own alignment is complete, so this is the correct point to
     // spawn shared content — not OnPlayerJoined, which only means "connected",
     // not "aligned to the same physical spot yet".
+    //
+    // This event and Fusion's own connection are two independent async systems
+    // (OVR anchor sharing vs. Fusion room join) that can complete in either
+    // order — on-device logs showed the anchor save/share succeeding while
+    // this apparently fired before WaitForRunnerAndHook had resolved a role
+    // yet. The old code checked IsEngineer here directly, which was still
+    // false at that point (Runner was still null), so it silently returned
+    // without ever spawning anything and without logging — a bug that looked
+    // identical to colocation simply never completing. Now this just records
+    // that colocation is ready and defers the actual IsEngineer/spawn
+    // decision to TrySpawnMap, which both this and ResolveRole call, so
+    // whichever of the two signals arrives last is the one that triggers it.
     public void OnColocationReady()
     {
-        if (!IsEngineer) return; // only the host/Engineer spawns the shared Map
+        _colocationReady = true;
+        Debug.Log("🎯 Colocation ready (role resolved so far: " + _roleResolved + ")");
+        TrySpawnMap();
+    }
+
+    void TrySpawnMap()
+    {
+        if (_mapSpawned || !_colocationReady || !IsEngineer) return;
 
         var cam = Camera.main.transform;
         var forward = Vector3.Scale(cam.forward, new Vector3(1, 0, 1)).normalized;
@@ -118,6 +141,7 @@ public class AppController : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
+        _mapSpawned = true;
         Runner.Spawn(mapPrefab, mapPos, Quaternion.Euler(90, 180, 0));
         Debug.Log("✅ Colocation ready — Map spawned at: " + mapPos);
     }
