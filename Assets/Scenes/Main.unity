@@ -3743,7 +3743,7 @@ MonoBehaviour:
         m_CallState: 2
   DebuggingOptions:
     visualizeAlignmentAnchor: 1
-    enableVerboseLogging: 0
+    enableVerboseLogging: 1
 --- !u!114 &288778151
 MonoBehaviour:
   m_ObjectHideFlags: 0
