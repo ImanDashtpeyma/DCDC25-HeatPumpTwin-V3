@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Fusion;
 using Fusion.Sockets;
 using System.Collections.Generic;
@@ -30,16 +31,38 @@ public class AppController : MonoBehaviour, INetworkRunnerCallbacks
 
     void Awake()
     {
-        // Awake (not Start) so callbacks are registered before the Local
-        // Matchmaking block's own Start() can finish connecting.
-        Runner = FindObjectOfType<NetworkRunner>();
-        if (Runner == null)
-        {
-            Debug.LogError("⚠️ No NetworkRunner found in the scene — is [BuildingBlock] Network Manager present?");
-            return;
-        }
+        StartCoroutine(WaitForRunnerAndHook());
+    }
+
+    // [BuildingBlock] Network Manager only holds a NetworkRunner *template* in
+    // the scene — Meta.XR.MultiplayerBlocks.Fusion.CustomMatchmakingFusion
+    // actually calls Instantiate(_runnerPrefab) at runtime and starts THAT
+    // clone, not the scene object. FindObjectOfType<NetworkRunner>() in Awake
+    // was grabbing the inert template, so Runner.IsRunning was always false
+    // and OnPlayerJoined never reached us. Poll NetworkRunner.Instances (the
+    // list Fusion itself maintains of active runners) instead, so we hook the
+    // real one once matchmaking actually creates it.
+    IEnumerator WaitForRunnerAndHook()
+    {
+        Debug.Log("📡 Waiting for the Colocation building blocks to start the Fusion session...");
+
+        while (NetworkRunner.Instances == null || NetworkRunner.Instances.Count == 0)
+            yield return null;
+
+        Runner = NetworkRunner.Instances[NetworkRunner.Instances.Count - 1];
         Runner.AddCallbacks(this);
-        Debug.Log("📡 Waiting for the Colocation building blocks to connect...");
+        Debug.Log("✅ Hooked into active NetworkRunner: " + Runner.name);
+
+        // Edge case: if the runner is already fully connected by the time we
+        // catch up (shouldn't normally happen since Instances populates well
+        // before the connection handshake completes, but cheap to guard),
+        // resolve the role immediately instead of waiting for a callback that
+        // already fired before we registered.
+        if (Runner.IsRunning && Runner.LocalPlayer.IsRealPlayer)
+        {
+            Debug.Log("🚪 Already connected — Engineer=" + Runner.IsSharedModeMasterClient);
+            OnRoleResolved?.Invoke(Runner.IsSharedModeMasterClient);
+        }
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
