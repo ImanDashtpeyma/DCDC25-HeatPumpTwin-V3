@@ -43,29 +43,42 @@ public class AppController : MonoBehaviour, INetworkRunnerCallbacks
     // was grabbing the inert template, so Runner.IsRunning was always false
     // and OnPlayerJoined never reached us.
     //
-    // Even after fixing that (polling NetworkRunner.Instances to find the real
-    // clone), on-device testing showed OnPlayerJoined still doesn't reliably
-    // reach us in time — CreateRoom's StartGame appears to complete faster
-    // than this coroutine's next frame in some cases, so the callback for the
-    // local player can fire and be missed before AddCallbacks runs. Don't
-    // trust the callback alone: keep polling the runner's own connected state
-    // every frame until it confirms we're actually in, and resolve the role
-    // from whichever of the two (event or poll) notices first.
+    // On-device logs also showed CustomMatchmaking's CreateRoom retrying
+    // StartGame multiple times before it actually succeeds (3 separate
+    // StartGame call stacks before "[Fusion] adding player" appeared) — each
+    // retry instantiates a fresh NetworkRunner, so locking onto the FIRST
+    // entry in NetworkRunner.Instances risks hooking an abandoned attempt
+    // that never connects, while the one that actually succeeds is a later,
+    // different instance we'd never look at again.
+    //
+    // So don't lock onto one instance once and trust it: every frame, rescan
+    // all of NetworkRunner.Instances for whichever one is actually running
+    // with a real local player, (re)hook callbacks on it if it changed, and
+    // resolve the role from whichever of (event callback, this poll) notices
+    // first.
     IEnumerator WaitForRunnerAndHook()
     {
         Debug.Log("📡 Waiting for the Colocation building blocks to start the Fusion session...");
 
-        while (NetworkRunner.Instances == null || NetworkRunner.Instances.Count == 0)
-            yield return null;
-
-        Runner = NetworkRunner.Instances[NetworkRunner.Instances.Count - 1];
-        Runner.AddCallbacks(this);
-        Debug.Log("✅ Hooked into active NetworkRunner: " + Runner.name);
-
         while (!_roleResolved)
         {
-            if (Runner.IsRunning && Runner.LocalPlayer.IsRealPlayer)
+            var instances = NetworkRunner.Instances;
+            for (int i = instances.Count - 1; i >= 0; i--)
+            {
+                var candidate = instances[i];
+                if (candidate == null || !candidate.IsRunning || !candidate.LocalPlayer.IsRealPlayer)
+                    continue;
+
+                if (Runner != candidate)
+                {
+                    Runner = candidate;
+                    Runner.AddCallbacks(this);
+                    Debug.Log("✅ Hooked into active NetworkRunner: " + Runner.name);
+                }
+
                 ResolveRole(Runner.IsSharedModeMasterClient, "poll");
+                break;
+            }
             yield return null;
         }
     }
