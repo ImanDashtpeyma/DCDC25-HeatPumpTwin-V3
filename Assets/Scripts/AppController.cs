@@ -29,6 +29,8 @@ public class AppController : MonoBehaviour, INetworkRunnerCallbacks
     [Tooltip("Assign the 'Map' prefab here after it has a NetworkObject component and is registered in Fusion's Network Project Config.")]
     [SerializeField] private NetworkObject mapPrefab;
 
+    private bool _roleResolved;
+
     void Awake()
     {
         StartCoroutine(WaitForRunnerAndHook());
@@ -39,9 +41,16 @@ public class AppController : MonoBehaviour, INetworkRunnerCallbacks
     // actually calls Instantiate(_runnerPrefab) at runtime and starts THAT
     // clone, not the scene object. FindObjectOfType<NetworkRunner>() in Awake
     // was grabbing the inert template, so Runner.IsRunning was always false
-    // and OnPlayerJoined never reached us. Poll NetworkRunner.Instances (the
-    // list Fusion itself maintains of active runners) instead, so we hook the
-    // real one once matchmaking actually creates it.
+    // and OnPlayerJoined never reached us.
+    //
+    // Even after fixing that (polling NetworkRunner.Instances to find the real
+    // clone), on-device testing showed OnPlayerJoined still doesn't reliably
+    // reach us in time — CreateRoom's StartGame appears to complete faster
+    // than this coroutine's next frame in some cases, so the callback for the
+    // local player can fire and be missed before AddCallbacks runs. Don't
+    // trust the callback alone: keep polling the runner's own connected state
+    // every frame until it confirms we're actually in, and resolve the role
+    // from whichever of the two (event or poll) notices first.
     IEnumerator WaitForRunnerAndHook()
     {
         Debug.Log("📡 Waiting for the Colocation building blocks to start the Fusion session...");
@@ -53,24 +62,27 @@ public class AppController : MonoBehaviour, INetworkRunnerCallbacks
         Runner.AddCallbacks(this);
         Debug.Log("✅ Hooked into active NetworkRunner: " + Runner.name);
 
-        // Edge case: if the runner is already fully connected by the time we
-        // catch up (shouldn't normally happen since Instances populates well
-        // before the connection handshake completes, but cheap to guard),
-        // resolve the role immediately instead of waiting for a callback that
-        // already fired before we registered.
-        if (Runner.IsRunning && Runner.LocalPlayer.IsRealPlayer)
+        while (!_roleResolved)
         {
-            Debug.Log("🚪 Already connected — Engineer=" + Runner.IsSharedModeMasterClient);
-            OnRoleResolved?.Invoke(Runner.IsSharedModeMasterClient);
+            if (Runner.IsRunning && Runner.LocalPlayer.IsRealPlayer)
+                ResolveRole(Runner.IsSharedModeMasterClient, "poll");
+            yield return null;
         }
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
         if (player != runner.LocalPlayer) return;
+        ResolveRole(runner.IsSharedModeMasterClient, "callback");
+    }
 
-        Debug.Log("🚪 Joined room! Engineer=" + runner.IsSharedModeMasterClient);
-        OnRoleResolved?.Invoke(runner.IsSharedModeMasterClient);
+    void ResolveRole(bool isEngineer, string source)
+    {
+        if (_roleResolved) return;
+        _roleResolved = true;
+
+        Debug.Log($"🚪 Joined room! (via {source}) Engineer={isEngineer}");
+        OnRoleResolved?.Invoke(isEngineer);
     }
 
     // Wired up in the Inspector to [BuildingBlock] Colocation's ColocationController
