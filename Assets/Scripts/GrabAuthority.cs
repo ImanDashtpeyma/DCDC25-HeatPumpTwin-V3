@@ -26,9 +26,14 @@ public class GrabAuthority : NetworkBehaviour
     void OnEnable()
     {
         if (pointableElement != null)
+        {
             pointableElement.WhenPointerEventRaised += HandlePointerEvent;
+            Debug.Log("🖐 GrabAuthority: subscribed to PointableElement on " + name);
+        }
         else
+        {
             Debug.LogWarning("⚠️ GrabAuthority: no PointableElement found — grab authority transfer is disabled on " + name);
+        }
     }
 
     void OnDisable()
@@ -39,9 +44,19 @@ public class GrabAuthority : NetworkBehaviour
 
     void HandlePointerEvent(PointerEvent evt)
     {
+        Debug.Log($"🖐 GrabAuthority: pointer event {evt.Type} on {name} (Object null={Object == null})");
         if (evt.Type != PointerEventType.Select) return;
-        if (Object == null || Object.HasStateAuthority) return;
+
+        if (Object == null)
+        {
+            Debug.LogWarning("⚠️ GrabAuthority: Object (NetworkObject) is null on Select — can't request authority.");
+            return;
+        }
+
+        Debug.Log($"🖐 GrabAuthority: HasStateAuthority={Object.HasStateAuthority} before request on {name}");
+        if (Object.HasStateAuthority) return;
 
         Object.RequestStateAuthority();
+        Debug.Log($"🖐 GrabAuthority: RequestStateAuthority() called on {name}");
     }
 }
