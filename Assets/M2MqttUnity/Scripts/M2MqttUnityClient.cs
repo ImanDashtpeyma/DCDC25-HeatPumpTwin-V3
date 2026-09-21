@@ -270,28 +270,7 @@ namespace M2MqttUnity
             // leave some time to Unity to refresh the UI
             yield return new WaitForEndOfFrame();
 
-            // create client instance 
-            if (client == null)
-            {
-                try
-                {
-#if (!UNITY_EDITOR && UNITY_WSA_10_0 && !ENABLE_IL2CPP)
-                    client = new MqttClient(brokerAddress,brokerPort,isEncrypted, isEncrypted ? MqttSslProtocols.SSLv3 : MqttSslProtocols.None);
-#else
-                    client = new MqttClient(brokerAddress, brokerPort, isEncrypted, null, null, isEncrypted ? MqttSslProtocols.SSLv3 : MqttSslProtocols.None);
-                    //System.Security.Cryptography.X509Certificates.X509Certificate cert = new System.Security.Cryptography.X509Certificates.X509Certificate();
-                    //client = new MqttClient(brokerAddress, brokerPort, isEncrypted, cert, null, MqttSslProtocols.TLSv1_0, MyRemoteCertificateValidationCallback);
-#endif
-                }
-                catch (Exception e)
-                {
-                    client = null;
-                    Debug.LogErrorFormat("CONNECTION FAILED! {0}", e.ToString());
-                    OnConnectionFailed(e.Message);
-                    yield break;
-                }
-            }
-            else if (client.IsConnected)
+            if (client != null && client.IsConnected)
             {
                 yield break;
             }
@@ -301,23 +280,63 @@ namespace M2MqttUnity
             yield return new WaitForEndOfFrame();
             yield return new WaitForEndOfFrame();
 
-            client.Settings.TimeoutOnConnection = timeoutOnConnection;
+            // Both constructing MqttClient (DNS resolution) and client.Connect()
+            // (TCP handshake + MQTT CONNECT, up to timeoutOnConnection) are
+            // synchronous/blocking. Running them inline on the main thread — as
+            // this coroutine originally did — freezes the whole app, including
+            // any other networking (e.g. Photon Fusion) running alongside it,
+            // for the full duration. An unreachable/slow broker turned that into
+            // a multi-second freeze on every connect attempt. Doing the actual
+            // socket work on a background thread and just polling for
+            // completion here keeps the rest of the game loop running normally
+            // while we wait.
+            MqttClient newClient = null;
+            Exception connectException = null;
+            bool connectDone = false;
             string clientId = Guid.NewGuid().ToString();
-            try
+
+            var connectThread = new System.Threading.Thread(() =>
             {
-                client.Connect(clientId, mqttUserName, mqttPassword);
+                try
+                {
+#if (!UNITY_EDITOR && UNITY_WSA_10_0 && !ENABLE_IL2CPP)
+                    newClient = new MqttClient(brokerAddress, brokerPort, isEncrypted, isEncrypted ? MqttSslProtocols.SSLv3 : MqttSslProtocols.None);
+#else
+                    newClient = new MqttClient(brokerAddress, brokerPort, isEncrypted, null, null, isEncrypted ? MqttSslProtocols.SSLv3 : MqttSslProtocols.None);
+#endif
+                    newClient.Settings.TimeoutOnConnection = timeoutOnConnection;
+                    newClient.Connect(clientId, mqttUserName, mqttPassword);
+                }
+                catch (Exception e)
+                {
+                    connectException = e;
+                }
+                finally
+                {
+                    connectDone = true;
+                }
+            });
+            connectThread.IsBackground = true;
+            connectThread.Start();
+
+            while (!connectDone)
+            {
+                yield return null;
             }
-            catch (Exception e)
+
+            if (connectException != null)
             {
                 client = null;
-                Debug.LogErrorFormat("Failed to connect to {0}:{1}\n (check client parameters: encryption, address/port, username/password):\n{2}", brokerAddress, brokerPort, e.ToString());
-                OnConnectionFailed(e.Message);
+                Debug.LogErrorFormat("Failed to connect to {0}:{1}\n (check client parameters: encryption, address/port, username/password):\n{2}", brokerAddress, brokerPort, connectException.ToString());
+                OnConnectionFailed(connectException.Message);
                 yield break;
             }
-            if (client.IsConnected)
+
+            client = newClient;
+            if (client != null && client.IsConnected)
             {
                 client.ConnectionClosed += OnMqttConnectionClosed;
-                // register to message received 
+                // register to message received
                 client.MqttMsgPublishReceived += OnMqttMessageReceived;
                 mqttClientConnected = true;
                 OnConnected();

@@ -16,11 +16,32 @@ using UnityEngine;
 public class GrabAuthority : NetworkBehaviour
 {
     [SerializeField] private PointableElement pointableElement;
+    private Rigidbody _rigidbody;
+    private bool _isGrabbed;
+    private float _lastPosLogTime;
+
+    // Bridges Interaction SDK's grab (which moves transform.position every
+    // Update(), on the render clock) into Fusion's own simulation clock.
+    // On-device logging proved that with PhysicsForecast off (this project's
+    // setting), Fusion's NetworkTransform.Render() re-applies the last
+    // *networked* position every frame — for every peer, including the state
+    // authority owner — because that's all it has: our grab code never wrote
+    // into the network state, only into transform.position on a normal
+    // Update(), which FixedUpdateNetwork (Fusion's tick, decoupled from
+    // render frames) never captured. Result: the object visibly snapped back
+    // to its spawn position every single frame, which read on-device as the
+    // hand passing straight through it. Caching the grabbed pose here and
+    // reapplying it inside FixedUpdateNetwork() gets it into the tick Fusion
+    // actually simulates from, so NetworkTransform captures and syncs it.
+    private Vector3 _pendingPosition;
+    private Quaternion _pendingRotation;
+    private bool _hasPendingPose;
 
     void Awake()
     {
         if (pointableElement == null)
             pointableElement = GetComponentInChildren<PointableElement>();
+        _rigidbody = GetComponent<Rigidbody>();
     }
 
     void OnEnable()
@@ -44,19 +65,62 @@ public class GrabAuthority : NetworkBehaviour
 
     void HandlePointerEvent(PointerEvent evt)
     {
-        Debug.Log($"🖐 GrabAuthority: pointer event {evt.Type} on {name} (Object null={Object == null})");
-        if (evt.Type != PointerEventType.Select) return;
-
-        if (Object == null)
+        if (evt.Type == PointerEventType.Select)
         {
-            Debug.LogWarning("⚠️ GrabAuthority: Object (NetworkObject) is null on Select — can't request authority.");
-            return;
+            _isGrabbed = true;
+            Debug.Log($"🖐 GrabAuthority: pointer event {evt.Type} on {name} (Object null={Object == null})");
+
+            if (Object == null)
+            {
+                Debug.LogWarning("⚠️ GrabAuthority: Object (NetworkObject) is null on Select — can't request authority.");
+                return;
+            }
+
+            Debug.Log($"🖐 GrabAuthority: HasStateAuthority={Object.HasStateAuthority} before request on {name}");
+            Debug.Log($"📍 GrabAuthority: transform.position={transform.position} rigidbody.position={(_rigidbody != null ? _rigidbody.position.ToString() : "no-rigidbody")} isKinematic={(_rigidbody != null ? _rigidbody.isKinematic.ToString() : "n/a")} on Select");
+
+            if (!Object.HasStateAuthority)
+            {
+                Object.RequestStateAuthority();
+                Debug.Log($"🖐 GrabAuthority: RequestStateAuthority() called on {name}");
+            }
         }
+        else if (evt.Type == PointerEventType.Unselect)
+        {
+            _isGrabbed = false;
+            _hasPendingPose = false;
+            Debug.Log($"📍 GrabAuthority: transform.position={transform.position} on Unselect");
+        }
+    }
 
-        Debug.Log($"🖐 GrabAuthority: HasStateAuthority={Object.HasStateAuthority} before request on {name}");
-        if (Object.HasStateAuthority) return;
+    void Update()
+    {
+        if (!_isGrabbed) return;
 
-        Object.RequestStateAuthority();
-        Debug.Log($"🖐 GrabAuthority: RequestStateAuthority() called on {name}");
+        _pendingPosition = transform.position;
+        _pendingRotation = transform.rotation;
+        _hasPendingPose = true;
+
+        if (Time.time - _lastPosLogTime < 0.3f) return;
+        _lastPosLogTime = Time.time;
+        Debug.Log($"📍[Update] GrabAuthority: transform.position={transform.position} rigidbody.position={(_rigidbody != null ? _rigidbody.position.ToString() : "no-rigidbody")} while grabbed on {name}");
+    }
+
+    // Fusion's simulation tick. Reapplying the grabbed pose here (instead of
+    // only in Update()) is what makes NetworkTransform actually capture and
+    // sync it — see the comment on _pendingPosition above.
+    public override void FixedUpdateNetwork()
+    {
+        if (!_isGrabbed || !_hasPendingPose || Object == null || !Object.HasStateAuthority) return;
+
+        transform.position = _pendingPosition;
+        transform.rotation = _pendingRotation;
+    }
+
+    void LateUpdate()
+    {
+        if (!_isGrabbed) return;
+        if (Time.time - _lastPosLogTime > 0.05f) return;
+        Debug.Log($"📍[LateUpdate] GrabAuthority: transform.position={transform.position} rigidbody.position={(_rigidbody != null ? _rigidbody.position.ToString() : "no-rigidbody")} while grabbed on {name}");
     }
 }

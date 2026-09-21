@@ -30,14 +30,14 @@ public class TwinNetworkHub : NetworkBehaviour
 
     private NetworkObject _spawnedHVAC;
 
-    public void SelectPin_Request(int pinId, Vector3 pinWorldPosition)
+    public void SelectPin_Request(int pinId, Vector3 pinWorldPosition, Quaternion pinWorldRotation)
     {
         if (!AppController.IsEngineer) return;
-        RPC_SelectPin(pinId, pinWorldPosition);
+        RPC_SelectPin(pinId, pinWorldPosition, pinWorldRotation);
     }
 
     [Rpc(RpcSources.All, RpcTargets.All)]
-    void RPC_SelectPin(int pinId, Vector3 pinPos)
+    void RPC_SelectPin(int pinId, Vector3 pinPos, Quaternion pinRot)
     {
         selectedPinId = pinId;
 
@@ -53,7 +53,7 @@ public class TwinNetworkHub : NetworkBehaviour
                 Runner.Despawn(_spawnedHVAC);
                 _spawnedHVAC = null;
             }
-            SpawnHVAC(pinPos);
+            SpawnHVAC(pinPos, pinRot);
         }
         else
         {
@@ -73,10 +73,10 @@ public class TwinNetworkHub : NetworkBehaviour
                 _indicator = hvac.GetComponentInChildren<HVACIndicator>();
             yield return null;
         }
-        _indicator?.SetPending();
+        _indicator?.SetOff();
     }
 
-    void SpawnHVAC(Vector3 spawnPos)
+    void SpawnHVAC(Vector3 spawnPos, Quaternion spawnRot)
     {
         if (hvacPrefab == null)
         {
@@ -84,12 +84,17 @@ public class TwinNetworkHub : NetworkBehaviour
             return;
         }
 
-        _spawnedHVAC = Runner.Spawn(hvacPrefab, spawnPos, Quaternion.identity);
+        _spawnedHVAC = Runner.Spawn(hvacPrefab, spawnPos, spawnRot);
         heatPumpRoot = _spawnedHVAC.gameObject;
         _indicator = _spawnedHVAC.GetComponentInChildren<HVACIndicator>();
-        _indicator?.SetPending();
+        _indicator?.SetOff();
 
-        MQTTManager.Instance?.PublishPending();
+        // Selecting a pin doesn't change the real unit's state (color/relay)
+        // — nothing's been proposed/approved/rejected yet — but Iman wants
+        // the audible cue back, so send a "selected" message the Arduino
+        // treats as beep-only.
+        if (AppController.IsEngineer)
+            MQTTManager.Instance?.PublishSelected();
         Debug.Log("✅ HVAC spawned at: " + spawnPos);
     }
 
@@ -106,8 +111,10 @@ public class TwinNetworkHub : NetworkBehaviour
 
     public void Technician_RequestChange(float power, float pressure, int phase)
     {
-        //For Disabling  rols
-        if (AppController.IsEngineer) return;
+        // Same shape as the RPC_Approve bug: this blocked Engineer callers,
+        // but the "Propose" button (ProposeFromUI) lives inside
+        // Engineer_Panel and is the only Propose button reachable in a solo
+        // test — the guard made it silently do nothing. Allow either role.
         RPC_RequestChange(power, pressure, phase);
     }
 
@@ -118,7 +125,13 @@ public class TwinNetworkHub : NetworkBehaviour
         pendingPower = power;
         pendingPressure = pressure;
         pendingPhase = phase;
+        _indicator?.SetSuspended();
         Debug.Log($"PENDING: power={power}, pressure={pressure}, phase={phase}");
+
+        // فقط Engineer publish کنه — همون الگوی Approve/Reject، تا فقط یه
+        // کلاینت پیام رو به آردوینوی واقعی بفرسته.
+        if (AppController.IsEngineer)
+            MQTTManager.Instance?.PublishSuspended();
     }
 
     public void Engineer_Approve()
@@ -136,17 +149,18 @@ public class TwinNetworkHub : NetworkBehaviour
     [Rpc(RpcSources.All, RpcTargets.All)]
     void RPC_Approve()
     {
-        if (!pending) return;
-
+        // Used to require `pending` (only set true by a Technician's
+        // Technician_RequestChange) before doing anything — meaning Approve
+        // was a silent no-op in any solo/Engineer-only test, since nothing
+        // ever proposed a change. RPC_Reject has no such guard and always
+        // worked, which is exactly the asymmetry Iman hit (Reject always
+        // responded, Approve never did). Apply unconditionally instead, same
+        // as Reject.
         appliedPower = pendingPower;
         appliedPressure = pendingPressure;
         appliedPhase = pendingPhase;
         pending = false;
         _indicator?.SetApproved();
-
-        if (heatPumpRoot != null)
-            heatPumpRoot.transform.localScale =
-                Vector3.one * (1 + appliedPower / 5000f);
 
         Debug.Log($"APPROVED: power={appliedPower}");
         // فقط Engineer publish کنه
