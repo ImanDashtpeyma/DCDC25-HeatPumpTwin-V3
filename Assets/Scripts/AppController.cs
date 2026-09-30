@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Fusion;
 using Fusion.Sockets;
 using System.Collections.Generic;
@@ -28,36 +29,106 @@ public class AppController : MonoBehaviour, INetworkRunnerCallbacks
     [Tooltip("Assign the 'Map' prefab here after it has a NetworkObject component and is registered in Fusion's Network Project Config.")]
     [SerializeField] private NetworkObject mapPrefab;
 
+    private bool _roleResolved;
+
     void Awake()
     {
-        // Awake (not Start) so callbacks are registered before the Local
-        // Matchmaking block's own Start() can finish connecting.
-        Runner = FindObjectOfType<NetworkRunner>();
-        if (Runner == null)
+        StartCoroutine(WaitForRunnerAndHook());
+    }
+
+    // [BuildingBlock] Network Manager only holds a NetworkRunner *template* in
+    // the scene — Meta.XR.MultiplayerBlocks.Fusion.CustomMatchmakingFusion
+    // actually calls Instantiate(_runnerPrefab) at runtime and starts THAT
+    // clone, not the scene object. FindObjectOfType<NetworkRunner>() in Awake
+    // was grabbing the inert template, so Runner.IsRunning was always false
+    // and OnPlayerJoined never reached us.
+    //
+    // On-device logs also showed CustomMatchmaking's CreateRoom retrying
+    // StartGame multiple times before it actually succeeds (3 separate
+    // StartGame call stacks before "[Fusion] adding player" appeared) — each
+    // retry instantiates a fresh NetworkRunner, so locking onto the FIRST
+    // entry in NetworkRunner.Instances risks hooking an abandoned attempt
+    // that never connects, while the one that actually succeeds is a later,
+    // different instance we'd never look at again.
+    //
+    // So don't lock onto one instance once and trust it: every frame, rescan
+    // all of NetworkRunner.Instances for whichever one is actually running
+    // with a real local player, (re)hook callbacks on it if it changed, and
+    // resolve the role from whichever of (event callback, this poll) notices
+    // first.
+    IEnumerator WaitForRunnerAndHook()
+    {
+        Debug.Log("📡 Waiting for the Colocation building blocks to start the Fusion session...");
+
+        while (!_roleResolved)
         {
-            Debug.LogError("⚠️ No NetworkRunner found in the scene — is [BuildingBlock] Network Manager present?");
-            return;
+            var instances = NetworkRunner.Instances;
+            for (int i = instances.Count - 1; i >= 0; i--)
+            {
+                var candidate = instances[i];
+                if (candidate == null || !candidate.IsRunning || !candidate.LocalPlayer.IsRealPlayer)
+                    continue;
+
+                if (Runner != candidate)
+                {
+                    Runner = candidate;
+                    Runner.AddCallbacks(this);
+                    Debug.Log("✅ Hooked into active NetworkRunner: " + Runner.name);
+                }
+
+                ResolveRole(Runner.IsSharedModeMasterClient, "poll");
+                break;
+            }
+            yield return null;
         }
-        Runner.AddCallbacks(this);
-        Debug.Log("📡 Waiting for the Colocation building blocks to connect...");
     }
 
     public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
     {
         if (player != runner.LocalPlayer) return;
-
-        Debug.Log("🚪 Joined room! Engineer=" + runner.IsSharedModeMasterClient);
-        OnRoleResolved?.Invoke(runner.IsSharedModeMasterClient);
+        ResolveRole(runner.IsSharedModeMasterClient, "callback");
     }
+
+    void ResolveRole(bool isEngineer, string source)
+    {
+        if (_roleResolved) return;
+        _roleResolved = true;
+
+        Debug.Log($"🚪 Joined room! (via {source}) Engineer={isEngineer}");
+        OnRoleResolved?.Invoke(isEngineer);
+        TrySpawnMap();
+    }
+
+    private bool _colocationReady;
+    private bool _mapSpawned;
 
     // Wired up in the Inspector to [BuildingBlock] Colocation's ColocationController
     // -> "Colocation Ready Callbacks" UnityEvent. Fires locally on each device once
     // that device's own alignment is complete, so this is the correct point to
     // spawn shared content — not OnPlayerJoined, which only means "connected",
     // not "aligned to the same physical spot yet".
+    //
+    // This event and Fusion's own connection are two independent async systems
+    // (OVR anchor sharing vs. Fusion room join) that can complete in either
+    // order — on-device logs showed the anchor save/share succeeding while
+    // this apparently fired before WaitForRunnerAndHook had resolved a role
+    // yet. The old code checked IsEngineer here directly, which was still
+    // false at that point (Runner was still null), so it silently returned
+    // without ever spawning anything and without logging — a bug that looked
+    // identical to colocation simply never completing. Now this just records
+    // that colocation is ready and defers the actual IsEngineer/spawn
+    // decision to TrySpawnMap, which both this and ResolveRole call, so
+    // whichever of the two signals arrives last is the one that triggers it.
     public void OnColocationReady()
     {
-        if (!IsEngineer) return; // only the host/Engineer spawns the shared Map
+        _colocationReady = true;
+        Debug.Log("🎯 Colocation ready (role resolved so far: " + _roleResolved + ")");
+        TrySpawnMap();
+    }
+
+    void TrySpawnMap()
+    {
+        if (_mapSpawned || !_colocationReady || !IsEngineer) return;
 
         var cam = Camera.main.transform;
         var forward = Vector3.Scale(cam.forward, new Vector3(1, 0, 1)).normalized;
@@ -70,6 +141,7 @@ public class AppController : MonoBehaviour, INetworkRunnerCallbacks
             return;
         }
 
+        _mapSpawned = true;
         Runner.Spawn(mapPrefab, mapPos, Quaternion.Euler(90, 180, 0));
         Debug.Log("✅ Colocation ready — Map spawned at: " + mapPos);
     }

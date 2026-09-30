@@ -30,14 +30,14 @@ public class TwinNetworkHub : NetworkBehaviour
 
     private NetworkObject _spawnedHVAC;
 
-    public void SelectPin_Request(int pinId, Vector3 pinWorldPosition)
+    public void SelectPin_Request(int pinId, Vector3 pinWorldPosition, Quaternion pinWorldRotation)
     {
         if (!AppController.IsEngineer) return;
-        RPC_SelectPin(pinId, pinWorldPosition);
+        RPC_SelectPin(pinId, pinWorldPosition, pinWorldRotation);
     }
 
     [Rpc(RpcSources.All, RpcTargets.All)]
-    void RPC_SelectPin(int pinId, Vector3 pinPos)
+    void RPC_SelectPin(int pinId, Vector3 pinPos, Quaternion pinRot)
     {
         selectedPinId = pinId;
 
@@ -53,7 +53,7 @@ public class TwinNetworkHub : NetworkBehaviour
                 Runner.Despawn(_spawnedHVAC);
                 _spawnedHVAC = null;
             }
-            SpawnHVAC(pinPos);
+            SpawnHVAC(pinPos, pinRot);
         }
         else
         {
@@ -61,22 +61,39 @@ public class TwinNetworkHub : NetworkBehaviour
         }
     }
 
+    // The Engineer's client can despawn/respawn a fresh "hvac 1(Clone)" in
+    // quick succession (e.g. the pin button firing multiple Select events
+    // per press — a separate bug, still open). FindIndicatorAfterSpawn used
+    // to cache _indicator once via a 5s-timeout coroutine; if that window
+    // landed on a since-despawned instance (or missed the final one
+    // entirely), _indicator stayed null or pointed at a destroyed object
+    // forever, silently no-opping every SetX() call after — exactly the
+    // "Technician's LED never updates" symptom Iman hit. Re-resolving fresh
+    // on every use, and treating Unity's "destroyed object == null" as a
+    // signal to look again, makes this self-healing across respawns instead
+    // of depending on a single lucky lookup.
+    HVACIndicator ResolveIndicator()
+    {
+        if (_indicator != null) return _indicator;
+        var hvac = GameObject.Find("hvac 1(Clone)");
+        if (hvac != null)
+            _indicator = hvac.GetComponentInChildren<HVACIndicator>();
+        return _indicator;
+    }
+
     IEnumerator FindIndicatorAfterSpawn()
     {
         // صبر کن تا HVAC توسط Engineer spawn بشه
         float timeout = 5f;
-        while (_indicator == null && timeout > 0)
+        while (ResolveIndicator() == null && timeout > 0)
         {
             timeout -= Time.deltaTime;
-            var hvac = GameObject.Find("hvac 1(Clone)");
-            if (hvac != null)
-                _indicator = hvac.GetComponentInChildren<HVACIndicator>();
             yield return null;
         }
-        _indicator?.SetPending();
+        ResolveIndicator()?.SetOff();
     }
 
-    void SpawnHVAC(Vector3 spawnPos)
+    void SpawnHVAC(Vector3 spawnPos, Quaternion spawnRot)
     {
         if (hvacPrefab == null)
         {
@@ -84,12 +101,17 @@ public class TwinNetworkHub : NetworkBehaviour
             return;
         }
 
-        _spawnedHVAC = Runner.Spawn(hvacPrefab, spawnPos, Quaternion.identity);
+        _spawnedHVAC = Runner.Spawn(hvacPrefab, spawnPos, spawnRot);
         heatPumpRoot = _spawnedHVAC.gameObject;
         _indicator = _spawnedHVAC.GetComponentInChildren<HVACIndicator>();
-        _indicator?.SetPending();
+        _indicator?.SetOff();
 
-        MQTTManager.Instance?.PublishPending();
+        // Selecting a pin doesn't change the real unit's state (color/relay)
+        // — nothing's been proposed/approved/rejected yet — but Iman wants
+        // the audible cue back, so send a "selected" message the Arduino
+        // treats as beep-only.
+        if (AppController.IsEngineer)
+            MQTTManager.Instance?.PublishSelected();
         Debug.Log("✅ HVAC spawned at: " + spawnPos);
     }
 
@@ -104,10 +126,33 @@ public class TwinNetworkHub : NetworkBehaviour
         }
     }
 
+    // Update every local copy of the panel (there can briefly be more than
+    // one HVAC clone around a respawn) so the other headset sees the values.
+    void ShowValuesOnAllPanels(float power, float pressure, int phase)
+    {
+        foreach (var ui in FindObjectsOfType<ProposeFromUI>(true))
+            ui.ShowValues(power, pressure, phase);
+    }
+
+    // Live mirror of the +/- steppers, before anyone presses Propose.
+    public void LiveEdit(float power, float pressure, int phase)
+    {
+        if (Runner == null) return;
+        RPC_LiveEdit(power, pressure, phase);
+    }
+
+    [Rpc(RpcSources.All, RpcTargets.All)]
+    void RPC_LiveEdit(float power, float pressure, int phase)
+    {
+        ShowValuesOnAllPanels(power, pressure, phase);
+    }
+
     public void Technician_RequestChange(float power, float pressure, int phase)
     {
-        //For Disabling  rols
-        if (AppController.IsEngineer) return;
+        // Same shape as the RPC_Approve bug: this blocked Engineer callers,
+        // but the "Propose" button (ProposeFromUI) lives inside
+        // Engineer_Panel and is the only Propose button reachable in a solo
+        // test — the guard made it silently do nothing. Allow either role.
         RPC_RequestChange(power, pressure, phase);
     }
 
@@ -118,7 +163,15 @@ public class TwinNetworkHub : NetworkBehaviour
         pendingPower = power;
         pendingPressure = pressure;
         pendingPhase = phase;
+        ShowValuesOnAllPanels(power, pressure, phase);
+
+        ResolveIndicator()?.SetSuspended();
         Debug.Log($"PENDING: power={power}, pressure={pressure}, phase={phase}");
+
+        // فقط Engineer publish کنه — همون الگوی Approve/Reject، تا فقط یه
+        // کلاینت پیام رو به آردوینوی واقعی بفرسته.
+        if (AppController.IsEngineer)
+            MQTTManager.Instance?.PublishSuspended();
     }
 
     public void Engineer_Approve()
@@ -136,17 +189,18 @@ public class TwinNetworkHub : NetworkBehaviour
     [Rpc(RpcSources.All, RpcTargets.All)]
     void RPC_Approve()
     {
-        if (!pending) return;
-
+        // Used to require `pending` (only set true by a Technician's
+        // Technician_RequestChange) before doing anything — meaning Approve
+        // was a silent no-op in any solo/Engineer-only test, since nothing
+        // ever proposed a change. RPC_Reject has no such guard and always
+        // worked, which is exactly the asymmetry Iman hit (Reject always
+        // responded, Approve never did). Apply unconditionally instead, same
+        // as Reject.
         appliedPower = pendingPower;
         appliedPressure = pendingPressure;
         appliedPhase = pendingPhase;
         pending = false;
-        _indicator?.SetApproved();
-
-        if (heatPumpRoot != null)
-            heatPumpRoot.transform.localScale =
-                Vector3.one * (1 + appliedPower / 5000f);
+        ResolveIndicator()?.SetApproved();
 
         Debug.Log($"APPROVED: power={appliedPower}");
         // فقط Engineer publish کنه
@@ -158,7 +212,7 @@ public class TwinNetworkHub : NetworkBehaviour
     void RPC_Reject()
     {
         pending = false;
-        _indicator?.SetRejected();
+        ResolveIndicator()?.SetRejected();
         Debug.Log("REJECTED");
         // فقط Engineer publish کنه
         if (AppController.IsEngineer)

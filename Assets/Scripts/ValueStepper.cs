@@ -31,5 +31,9 @@ public class ValueStepper : MonoBehaviour
         currentValue = Mathf.Clamp(currentValue, minValue, maxValue);
 
         inputField.text = currentValue.ToString("0");
+
+        var ui = GetComponentInParent<ProposeFromUI>();
+        if (ui == null) ui = FindObjectOfType<ProposeFromUI>();
+        ui?.BroadcastLiveValues();
     }
 }
